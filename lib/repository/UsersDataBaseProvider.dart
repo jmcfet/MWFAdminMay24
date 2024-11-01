@@ -8,6 +8,8 @@ import 'package:adminui/models/User.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+
+import '../models/matchsforgrid.dart';
 class UsersDBProvider {
  
  String scheme = 'https';
@@ -51,7 +53,38 @@ String server = 'landingstennis.com';
     resp.users = list.map((model) => User.fromJson(model)).toList();
     return resp;
   }
+Future<MatchsDTOResponse>  getAllMatchs(DateTime date) async {
+    MatchsDTOResponse resp = new MatchsDTOResponse();
+    var response;
+    Iterable list;
+try {
+    var queryParameters1 = {
+      'month': date.month.toString(),
+      'year':date.year.toString()
+    };
+print('month is ' + queryParameters1[0].toString());
 
+    var url = new Uri(scheme: scheme,
+      host: server,
+      port: port,
+
+      path: '/api/Account/GetAllMatchs',
+      queryParameters:queryParameters1
+
+    );
+    print('url is ' + url.toString());
+      response = await http.get(url);
+      list = json.decode(response.body);
+
+    } catch (error, stacktrace) {
+      print("Exception occured: $error stackTrace: $stacktrace");
+      resp.error = error.toString();
+      return resp;
+    }
+    resp.matches  = list.map((model) => MatchDTO.fromJSON(model)).toList();
+
+    return resp;
+  }
 
   Future<BookedDatesResponse>  getMonthStatus(DateTime picked) async {
     BookedDatesResponse resp = new BookedDatesResponse();

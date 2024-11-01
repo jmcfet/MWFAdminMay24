@@ -21,6 +21,7 @@ Drawer showMyMenu(context,List<int> indexes ,UserRepository _repository){
         tile = new ListTile(
           title: Text('Zero captain counts'),
               onTap : () async  {
+                
                 await _repository.zeroCaptainCount();
           },
         );
@@ -44,7 +45,15 @@ Drawer showMyMenu(context,List<int> indexes ,UserRepository _repository){
           },
         );
         break;
+      case 4:
+        tile = new ListTile(
+          title: Text('version 1.4'),
+          onTap: () async {
+            
 
+          },
+        );
+        break;
 
     }
     items.add(tile);

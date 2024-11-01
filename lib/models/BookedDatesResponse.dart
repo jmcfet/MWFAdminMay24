@@ -1,11 +1,17 @@
+import 'dart:js_util';
+
 import 'package:adminui/models/PlayersinfoandBookedDate.dart';
 
 
 class BookedDatesResponse {
-  late List<PlayersinfoandBookedDates> datesandstatus ;
+   List<PlayersinfoandBookedDates> datesandstatus  ;
   String error = '';
 
 
-  BookedDatesResponse();
+  BookedDatesResponse({
+    this.datesandstatus = const [],
+  });
+    
+  
 
 }

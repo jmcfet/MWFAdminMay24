@@ -12,6 +12,7 @@ class User{
   String? Name;
   String? Email;
   String? userid;
+  String? phonenum;
   int? level;
   int? notused;
 
@@ -19,7 +20,7 @@ class User{
 
 
   User({this.Id,this.Email,
-    this.Name,this.level,this.timesCaptain = 0,this.userid,this.notused});
+    this.Name,this.level,this.timesCaptain = 0,this.userid,this.notused,this.phonenum});
 
   factory User.fromJson(Map<String, dynamic> json) =>
       _$UserFromJson(json);

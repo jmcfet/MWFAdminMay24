@@ -1,3 +1,4 @@
+import 'package:adminui/models/matchsforgrid.dart';
 import 'package:adminui/repository/User_mockprovider.dart';
 import 'package:adminui/models/UsersResponse.dart';
 import 'package:adminui/models/BookedDatesResponse.dart';
@@ -17,7 +18,9 @@ class UserRepository{
   Future<BookedDatesResponse> getMonthStatus(DateTime picked) async{
     return _apiProvider.getMonthStatus( picked);
   }
-
+Future<MatchsDTOResponse>  getAllMatchs(DateTime date) async {
+  return _apiProvider.getAllMatchs(date);
+}
 
   Future<bool> freezedatabase() async{
     bool y = true;

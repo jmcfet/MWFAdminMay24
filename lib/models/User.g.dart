@@ -14,7 +14,8 @@ User _$UserFromJson(Map<String, dynamic> json) {
       Name: json['Name'] as String,
       level: json['level'] as int,
       notused: json['notused'] as int,
-      timesCaptain: json['timesCaptain'] as int);
+      timesCaptain: json['timesCaptain'] as int,
+       phonenum: json['phonenum'] as String);
 
 }
 

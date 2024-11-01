@@ -1,6 +1,8 @@
+import 'package:adminui/matchgrid.dart';
 import 'package:adminui/models/BookedDatesResponse.dart';
+import 'package:adminui/models/playerdata.dart';
 import 'package:adminui/showMenu.dart';
-import 'package:flutter/foundation.dart';
+import 'models/MatchDTO1.dart';
 
 //import 'package:adminui/models/playerinfo.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +25,7 @@ class adminui extends StatefulWidget {
 class _adminuiState extends State<adminui> {
   bool _value = false;
   int index = -1;
-
+ bool bDone = false;
   late UsersResponse response;
   late BookedDatesResponse bookingsresp;
 
@@ -34,8 +36,13 @@ class _adminuiState extends State<adminui> {
   List<bool> hasCaptain = new List<bool>.filled(12, false);
   final UserRepository _repository = UserRepository();
   List<Calendar>? _DatesMonth;
-   DateTime? picked;
+   DateTime? pickeddate;
+ 
   int activeDay = 0;
+  List<PlayerData> playersinfo = [];
+  List<PlayerData> allPlayers = [];
+    Map<String,double> columnswidths = Map();
+  List<String> columns = [];
   bool saveBtnswitchState = false;
   bool startBtnswitchState = true;
   bool gridBtnswitchState = true;
@@ -58,6 +65,7 @@ var tracknumbermatches = Map<String, int>();
     'dec'
   ];
   int yearofmatch = 2024;
+  DateTime currentMonth = DateTime.now(); 
 
   @override
   void initState() {
@@ -72,16 +80,20 @@ var tracknumbermatches = Map<String, int>();
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-            title: Text("Landings Team Setup "),
+            title: Text("Landings MWF Scheduler 1.4 "),
             backgroundColor: Colors.redAccent,
             actions: <Widget>[
-              //        IconButton(icon: Icon(Icons.calendar_today), onPressed: showGrid()),
-
+  
+           
+              
               ElevatedButton(
                   style: ElevatedButton.styleFrom(primary: Colors.redAccent),
                   child: Text("Start",
                       style: TextStyle(fontSize: 20, color: Colors.white)),
                   onPressed: startBtnswitchState ? () => {newMonth()} : null),
+
+                  
+                 
               IconButton(
                   icon: Icon(Icons.save),
                   onPressed: saveBtnswitchState ? () => {save()} : null),
@@ -101,23 +113,31 @@ var tracknumbermatches = Map<String, int>();
     if (newIndex > oldIndex) {
       newIndex -= 1;
     }
-
+    //do not allow captain to be moved
+    List<PlayersinfoandBookedDates> info = columnData[columnData.length - 1];
+    PlayersinfoandBookedDates usertomove = info[oldIndex];
+    if (usertomove.bIsCaptain) {
+      _showDialog('captain cannot be moved', false);
+      return;
+    }
+    
     setState(() {
-      List<PlayersinfoandBookedDates> info = columnData[columnData.length - 1];
-      PlayersinfoandBookedDates u = info[oldIndex];
+      
       info.removeAt(oldIndex);
-      info.insert(newIndex, u);
+      info.insert(newIndex, usertomove);
     });
   }
 
   setFreeze() async {
+    bDone = true;
     await _repository.freezedatabase();
   }
 
+  
+
   newMonth() async {
-    List<Widget> items = [];
-    int count = 1;
-    int? day;
+    
+    
     //we want the calendar to start on first MWF that does not have matchs and must do this step as
     //the datepicker will throw if start date is not one of the selectableDayPredicate (nuts)
     DateTime start = DateTime.now();
@@ -126,7 +146,7 @@ var tracknumbermatches = Map<String, int>();
       start = start.add(new Duration(days: 1));
     }
 
-    picked = await showDatePicker(
+    pickeddate = await showDatePicker(
         context: context,
         initialDate: start,
         // Refer step 1
@@ -134,13 +154,13 @@ var tracknumbermatches = Map<String, int>();
         lastDate: DateTime(2025),
         selectableDayPredicate: _decideWhichDayToEnable);
     //get the bookable days in the month
-    _DatesMonth = CustomCalendar().getMonthCalendar(
-        picked!.month, picked!.day, yearofmatch,
+    _DatesMonth = CustomCalendar().getMonthCalendar1(
+        pickeddate!.month, pickeddate!.day, yearofmatch,
         startWeekDay: StartWeekDay.monday);
     //find the first MWF of selected  month
 
-    day = picked?.day;
-    bookingsresp = await _repository.getMonthStatus(picked!);
+   
+    bookingsresp = await _repository.getMonthStatus(pickeddate!);
     startBtnswitchState = false;
     saveBtnswitchState = true;
     addColumn();
@@ -148,16 +168,16 @@ var tracknumbermatches = Map<String, int>();
 
   addColumn() async {
     List<PlayersinfoandBookedDates> players =
-        getPlayersforDay(bookingsresp.datesandstatus, picked!);
+        getPlayersforDay(bookingsresp.datesandstatus, pickeddate!);
     players.sort((a, b) => a.user!.level!.compareTo(b.user!.level!));
     if (players.length < 4) {
       _showDialog('no players for this day', false);
       _DatesMonth?.removeAt(0);
-      picked = _DatesMonth?.first.date;
+      pickeddate = _DatesMonth?.first.date;
       addColumn();
     } else
       setState(() {
-        dates.add(picked!);
+        dates.add(pickeddate!);
         columnData.add(players);
       });
   }
@@ -223,8 +243,11 @@ var tracknumbermatches = Map<String, int>();
                   ]
                       //         ),
                       //   Text('March 9', style: TextStyle(height: 3.0, fontSize: 21.2, fontWeight: FontWeight.bold,)),
-                      )),
-            ])),
+                      )
+                  ),
+            ]
+         )
+        ),
         Expanded(
             child: Container(
                 width: width,
@@ -242,7 +265,9 @@ var tracknumbermatches = Map<String, int>();
                       )
                     : ListView(
                         children: getPlayers(list, col, editablecol),
-                      )))
+                      )
+               )
+              )
       ]);
       col++;
       if (col > 7) dayInfo.removeAt(0);
@@ -253,6 +278,8 @@ var tracknumbermatches = Map<String, int>();
   }
 
   save() async {
+ //   if (bDone) return;
+  
     List<Match> matches = [];
     List<PlayersinfoandBookedDates> info = columnData[columnData.length - 1];
     int count = 1;
@@ -270,9 +297,9 @@ var tracknumbermatches = Map<String, int>();
         }
         Match m = new Match();
         m.id = 1;
-        m.day = picked?.day;
-        m.month = picked?.month;
-        m.year = picked?.year;
+        m.day = pickeddate?.day;
+        m.month = pickeddate?.month;
+        m.year = pickeddate?.year;
         m.level = 1;
         m.Captain = Captain;
 
@@ -289,9 +316,9 @@ var tracknumbermatches = Map<String, int>();
     if (players.length > 0) {
       Match m = new Match();
       m.id = 1;
-      m.day = picked?.day;
-      m.month = picked?.month;
-      m.year = picked?.year;
+      m.day = pickeddate?.day;
+      m.month = pickeddate?.month;
+      m.year = pickeddate?.year;
       m.level = 99;
       m.players = players;
       matches.add(m);
@@ -308,23 +335,33 @@ var tracknumbermatches = Map<String, int>();
               } 
           
   }
- //   response = await _repository.saveMatches(matches);
+    response = await _repository.saveMatches(matches);
 
     //the first column becomes new day to be editted
     _DatesMonth?.removeAt(0);
     if (_DatesMonth!.isEmpty) {
       _showDialog('that all Folks', false);
+     
+    
+      getUsersandInitGrid(pickeddate!,_repository).whenComplete(() =>
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(  // transitions to the new route using a platform-specific animation.
+                                    builder: (context) => UserMatchsDataGrid2(playersinfoin: playersinfo, allPlayersin: allPlayers, monthin: pickeddate!.month, columnsin: columns,columnwidthsin: columnswidths,)
+                                  )
+                              ));
+                     
       return;
     }
-    picked = _DatesMonth?.first.date;
-    bookingsresp = await _repository.getMonthStatus(picked!); //CLUDGE
+    pickeddate = _DatesMonth?.first.date;
+    bookingsresp = await _repository.getMonthStatus(pickeddate!); //CLUDGE
     //no captains assigned by default
     for (int i = 0; i < 12; i++) {
       hasCaptain[i] = false;
     }
     addColumn();
   }
-
+ 
   List<PlayersinfoandBookedDates> getPlayersforDay(
       List<PlayersinfoandBookedDates> datesandstatus, DateTime selectedDate) {
     int count = 1;
@@ -467,8 +504,9 @@ var tracknumbermatches = Map<String, int>();
                             }
                             )
                         )
- //                   : Container(),
-              ]),
+
+                ]
+              ),
               //    controlAffinity: ListTileControlAffinity.leading,
               autofocus: false,
               //     activeColor: Colors.green,
@@ -490,5 +528,131 @@ var tracknumbermatches = Map<String, int>();
     }
 
     return items;
+  }
+  Future <void> getUsersandInitGrid( DateTime date,UserRepository _repository) async {
+    try{
+    List<MatchDTO> matchs ;
+    List<User> allusers = [];
+  
+  late List<Calendar> _daysinMonth;
+  
+  
+    playersinfo.clear();
+    allPlayers.clear();
+    columns.clear();
+    UsersResponse resp =    await _repository.getUsers();
+    allusers = resp.users;
+    var resp1 = await _repository.getAllMatchs(date);
+    BookedDatesResponse bookingsresp = await _repository.getMonthStatus(date);
+    
+    matchs = resp1.matches;
+
+    //    _tennisDataGridSource.matchs = matchs;
+
+    
+    
+    columns.add( 'Name');
+    columnswidths['Name'] = 150;
+  //  if (bLoggedIn) {
+      columns.add('EMail');
+      columnswidths['EMail'] = 200;
+      columns.add('Phone');
+      columnswidths['Phone'] = 150;
+  //  }
+//use the first bookings for month to get the M-W-F for grid headings
+    int day = -1;
+    List<String>? statusdays = bookingsresp.datesandstatus[0].status?.split(',');
+    _daysinMonth = CustomCalendar().getJustMonthCalendar(date, statusdays!, startWeekDay: StartWeekDay.monday);
+    for(int day =0;day < _daysinMonth.length;day++)
+    {
+      if (_daysinMonth[day].date!.month == date.month) {
+        if (_daysinMonth[day].date!.weekday == 1 ||
+            _daysinMonth[day].date!.weekday == 3 ||
+            _daysinMonth[day].date!.weekday == 5) {
+          if (!columns.contains(
+              _daysinMonth[day].date!.day.toString())) {
+            columns.add(
+                _daysinMonth[day].date!.day.toString());
+            columnswidths[_daysinMonth[day].date!.day.toString()] = 50;
+          }
+        }
+      }
+    }
+// loop thru every player who registered for month and their playing status (available,sub, etc) this way we
+    //pickup the people who were subs and the ones who were available but were not booked
+    bookingsresp.datesandstatus.forEach((booking) {
+
+
+      PlayerData playerinfo = new PlayerData();
+      playerinfo.matches =  List<int>.filled(32, 0, growable: false);
+      bool bActivePlayer = false;
+      if (booking.user!.phonenum == null)
+        booking.user!.phonenum = '1111111111';
+      playerinfo.name = booking.user?.Name ?? '';
+      playerinfo.email = booking.user?.Email ?? '';
+      playerinfo.phonenum = booking.user?.phonenum ?? '';
+      allPlayers.add(playerinfo);
+      statusdays = booking.status?.split(',') ?? [];
+      //create a list of days in month and the players status for that day
+      _daysinMonth = CustomCalendar().getJustMonthCalendar(date, statusdays ?? [], startWeekDay: StartWeekDay.monday);
+      statusdays = booking.status?.split(',') ?? [];
+      int col = 0;
+
+      for(int day =0;day < _daysinMonth.length;day++)
+      {
+
+        // if a M-W-F
+        if (_daysinMonth[day].date!.weekday == 1 ||
+            _daysinMonth[day].date!.weekday == 3 ||
+            _daysinMonth[day].date!.weekday == 5) {
+          if (_daysinMonth[day].state == 1) {
+            bActivePlayer = true;
+            playerinfo.matches[col] = 99;    //a sub
+          }
+          if (_daysinMonth[day].state == 0) {
+            findMatch(matchs,allusers,_daysinMonth[day].date!.day,playerinfo,col);
+            bActivePlayer = true;
+          }
+
+        }
+
+        //  }
+        col++;
+      }
+
+      if (bActivePlayer)
+        playersinfo.add(playerinfo);
+    });
+    }
+    catch (e) {
+      print(e);
+    }
+  }
+  findMatch( List<MatchDTO> matchs,List<User> allusers,int day,PlayerData playerinfo,int columnNum){
+
+    List<MatchDTO> matchsforday = matchs!.where((element) =>
+    element.day == day).toList();
+    int iNumMatch = 0;
+    bool bFound = false;
+    //we are processing member by member . look thru the matchs for this day and see if member is
+    //in the match and if they are the captain
+    matchsforday.forEach((matchforday) {
+      iNumMatch++;
+      for (int ii = 0; ii < 4; ii++) {
+        User user = allusers.where((u) => u.Email == matchforday.players[ii] ).single;
+        if (user.Name== playerinfo.name) {
+          bFound = true;
+          playerinfo.matches[columnNum] = iNumMatch;
+          if (playerinfo.name == matchforday.Captain) {
+            playerinfo.CaptainthatDay[columnNum] = 1;
+          }
+
+        }
+      }
+      if (!bFound)  //player was left out as not enough players
+        playerinfo.matches[columnNum] = 88;
+    });
+
+
   }
 }

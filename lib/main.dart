@@ -8,7 +8,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ReorderableListView',
+      title: 'MWF Admin UI 1.4',
       theme: ThemeData(
         brightness: Brightness.dark,
         visualDensity: VisualDensity.adaptivePlatformDensity,
